@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model TS_EAMCET_2022_FINAL_PHASE {
+  INST_CODE      String
+  INSTITUTE_NAME String
+  PLACE          String
+  DIST           String
+  COED           String
+  TYPE           String
+  YEAR_OF_ESTB   Int
+  BRANCH         String
+  BRANCH_NAME    String
+  OC_GIRLS       Int
+  BC_A_GIRLS     Int
+  BC_B_GIRLS     Int
+  BC_C_GIRLS     Int
+  BC_D_GIRLS     Int
+  BC_E_GIRLS     Int
+  SC_GIRLS       Int
+  ST_GIRLS       Int
+  EWS_GIRLS_OU   Int
+  TUITION_FEE    Int
+  AFFILIATED     String
+  OC_BOYS        Int?
+  BC_A_BOYS      Int?
+  BC_B_BOYS      Int?
+  BC_C_BOYS      Int?
+  BC_D_BOYS      Int?
+  BC_E_BOYS      Int?
+  SC_BOYS        Int?
+  ST_BOYS        Int?
+  EWS_GEN_OU     Int?
+
+  @@id([INST_CODE, BRANCH])
+  @@index([COED, TYPE, BRANCH, OC_GIRLS, BC_A_GIRLS, BC_B_GIRLS, BC_C_GIRLS, BC_D_GIRLS, BC_E_GIRLS, SC_GIRLS, ST_GIRLS, EWS_GIRLS_OU, AFFILIATED], map: "search_index_TS_EAMCET_2022_FINAL_PHASE")
+}
+
+model TS_EAMCET_2022_FIRST_PHASE {
+  INST_CODE      String
+  INSTITUTE_NAME String
+  PLACE          String
+  DIST           String
+  COED           String
+  TYPE           String
+  YEAR_OF_ESTB   Int
+  BRANCH         String
+  BRANCH_NAME    String
+  OC_GIRLS       Int
+  BC_A_GIRLS     Int
+  BC_B_GIRLS     Int
+  BC_C_GIRLS     Int
+  BC_D_GIRLS     Int
+  BC_E_GIRLS     Int
+  SC_GIRLS       Int
+  ST_GIRLS       Int
+  EWS_GIRLS_OU   Int
+  TUITION_FEE    Int
+  AFFILIATED     String
+  EWS_GEN_OU     Int?
+  BC_A_BOYS      Int?
+  BC_B_BOYS      Int?
+  BC_C_BOYS      Int?
+  BC_D_BOYS      Int?
+  BC_E_BOYS      Int?
+  SC_BOYS        Int?
+  ST_BOYS        Int?
+  OC_BOYS        Int?
+
+  @@id([INST_CODE, BRANCH])
+  @@index([COED, TYPE, BRANCH, OC_GIRLS, BC_A_GIRLS, BC_B_GIRLS, BC_C_GIRLS, BC_D_GIRLS, BC_E_GIRLS, SC_GIRLS, ST_GIRLS, EWS_GIRLS_OU, AFFILIATED], map: "search_index_TS_EAMCET_2022_FIRST_PHASE")
+}
