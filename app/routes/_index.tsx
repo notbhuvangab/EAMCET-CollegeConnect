@@ -29,6 +29,7 @@ export const meta: MetaFunction = () => {
   ];
 };
 async function queryTable(values: any): Promise<any[]> {
+  console.log(dbFilePath);
   let db = new sqlite3.Database(dbFilePath, sqlite3.OPEN_READWRITE, (err: any) => {
     if (err) {
       console.error(err.message);
