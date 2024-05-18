@@ -1,13 +1,21 @@
-import type { ActionFunction, ActionFunctionArgs, MetaFunction } from "@remix-run/node";
+import type { ActionFunction, MetaFunction } from "@remix-run/node";
 import { Form, json, useActionData } from "@remix-run/react";
-import sqlite3 from 'sqlite3';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import db from '../lib/db.server';
 import { AgGridReact } from 'ag-grid-react'; // React Data Grid Component
 import "ag-grid-community/styles/ag-grid.css"; // Mandatory CSS required by the grid
 import "ag-grid-community/styles/ag-theme-quartz.css"; // Optional Theme applied to the grid
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbFilePath = path.join(__dirname, '..', 'dev.server.db');
+
+
+type Data = {
+  INST_CODE: string,
+  INSTITUTE_NAME: string,
+  PLACE: string,
+  BRANCH_NAME: string,
+  AFFILIATED: string,
+  TUITION_FEE: number,
+  LAST_RANK: number
+}
+
 const gridOptions: any = {
   columnDefs: [
     { field: "INST_CODE", headerName: 'Institute Code', flex: 0.5 },
@@ -16,7 +24,7 @@ const gridOptions: any = {
     { field: "BRANCH_NAME", headerName: 'Branch Name', flex: 2 },
     { field: "AFFILIATED", headerName: 'Affiliated', flex: 0.5 },
     { field: "TUITION_FEE", headerName: 'Tuition Fee', flex: 0.5 },
-    { field: "LAST_RANK", headerName: 'Last Rank', flex: 0.5 },
+    { field: "last_rank", headerName: 'Last Rank', flex: 0.5 },
   ],
   pagination: true,
   paginationPageSize: 50,
@@ -28,119 +36,84 @@ export const meta: MetaFunction = () => {
     { title: "TS EAMCET College Predictor" }
   ];
 };
-async function queryTable(values: any): Promise<any[]> {
-  let db = new sqlite3.Database(dbFilePath, sqlite3.OPEN_READWRITE, (err: any) => {
-    if (err) {
-      console.error(err.message);
-    }
-    console.log('Connected to the database.');
-  });
+async function queryTable(values: any): Promise<void> {
   let branch = values.branch.toString();
   let rank = Number(values.rank.toString());
   let category = values.category.toString();
-  let table = values.lastRank.toString() === "final_phase" ? "TS_EAMCET_2022_FINAL_PHASE" : "TS_EAMCET_2022_FIRST_PHASE"
+  let table = values.lastRank.toString() === "final_phase" ? `public."TS_EAMCET_2022_FINAL_PHASE"` : `public."TS_EAMCET_2022_FIRST_PHASE"`
 
-  let sql = `select distinct INST_CODE,INSTITUTE_NAME,PLACE,BRANCH_NAME,TUITION_FEE,AFFILIATED,${category} AS LAST_RANK from ${table} where BRANCH = '${branch}' and ${category}>=${rank}`;
+  let sql = `select distinct "INST_CODE","INSTITUTE_NAME","PLACE","BRANCH_NAME","TUITION_FEE","AFFILIATED","${category}" AS LAST_RANK from ${table} where "BRANCH" = '${branch}' and "${category}">=${rank}`;
   if (values.category.toString().includes("BOYS")) {
-    sql += ` and ${category}!="NA" `;
+    sql += ` and "${category}"!=0 `;
   }
   if (values.type.toString().length > 0) {
-    sql += ` and TYPE='${values.type.toString()}' `;
+    sql += ` and "TYPE"='${values.type.toString()}' `;
   }
   if (values.coed.toString().length > 0) {
-    sql += ` and COED='${values.coed.toString()}' `;
+    sql += ` and "COED"='${values.coed.toString()}' `;
   }
   if (values.affiliated.toString().length > 0) {
-    sql += ` and AFFILIATED='${values.affiliated.toString()}' `;
+    sql += ` and "AFFILIATED"='${values.affiliated.toString()}' `;
   }
-  sql += ` order by ${category} asc`
-  //console.log(sql);
-  return new Promise<any[]>((resolve, reject) => {
-    db.all(sql, [], (err, rows) => {
-      if (err) {
-        db.close((err) => {
-          if (err) {
-            console.error('Error closing database:', err.message);
-          } else {
-            console.log('Database connection closed');
-          }
-        });
-        reject(err);
-      } else {
-        db.close((err) => {
-          if (err) {
-            console.error('Error closing database:', err.message);
-          } else {
-            console.log('Database connection closed');
-          }
-        });
-        resolve(rows);
-      }
-    });
-  });
+  sql += ` order by "${category}" asc`
+  const data: any = await db.query(sql);
+  return data;
 }
 
 export const action: ActionFunction = async ({ request }) => {
   var positiveNumberRegex = /^\d+$/;
-  const categorys: string[] = ["OC_BOYS","OC_GIRLS","BC_A_GIRLS","BC_A_BOYS","BC_B_BOYS","BC_B_GIRLS","BC_C_BOYS","BC_C_GIRLS","BC_D_GIRLS","BC_D_BOYS","BC_E_BOYS","BC_E_GIRLS","SC_BOYS","SC_GIRLS","ST_BOYS","ST_GIRLS","EWS_GEN_OU","EWS_GIRLS_OU"];
-  const branchs: string[] = ["ANE","AGR","AI","AID","AIM","AUT","PHM","BME","BIO","MMS","MTE","CHE","CIV","CME","CSW","CSG","CSN","CSB","CSE","CSM","CSC","CSD",
-    "CSO","CSI","CST","CIC","DRG","DTD","EEE","ECE","ECM","EIE","ETM","ECI","FDT","INF","MCT","MEC","MET","MMT","MIN","PHD","PHE","PLG","TEX"
+  const categorys: string[] = ["OC_BOYS", "OC_GIRLS", "BC_A_GIRLS", "BC_A_BOYS", "BC_B_BOYS", "BC_B_GIRLS", "BC_C_BOYS", "BC_C_GIRLS", "BC_D_GIRLS", "BC_D_BOYS", "BC_E_BOYS", "BC_E_GIRLS", "SC_BOYS", "SC_GIRLS", "ST_BOYS", "ST_GIRLS", "EWS_GEN_OU", "EWS_GIRLS_OU"];
+  const branchs: string[] = ["ANE", "AGR", "AI", "AID", "AIM", "AUT", "PHM", "BME", "BIO", "MMS", "MTE", "CHE", "CIV", "CME", "CSW", "CSG", "CSN", "CSB", "CSE", "CSM", "CSC", "CSD",
+    "CSO", "CSI", "CST", "CIC", "DRG", "DTD", "EEE", "ECE", "ECM", "EIE", "ETM", "ECI", "FDT", "INF", "MCT", "MEC", "MET", "MMT", "MIN", "PHD", "PHE", "PLG", "TEX"
   ]
   const phases: string[] = ["first_phase", "final_phase"];
-  const types: string[] = ["UNIV","PVT","SF", "GOV"];
+  const types: string[] = ["UNIV", "PVT", "SF", "GOV"];
   const coed: string[] = ["GIRLS", "COED"];
-  const affiliations: string[] = ["PJTSAU","ANURAG UNIVERSITY","KU","PLMU",  "SVHU","SR UNIVERSITY",    "JNTUH","MGUN","PVNRTVU","CONSTITUENT COLLEGE", "OU"];
+  const affiliations: string[] = ["PJTSAU", "ANURAG UNIVERSITY", "KU", "PLMU", "SVHU", "SR UNIVERSITY", "JNTUH", "MGUN", "PVNRTVU", "CONSTITUENT COLLEGE", "OU"];
   const values = Object.fromEntries(await request.formData())
   //console.log(values);
   //validation rules for input
-  if(values.rank.toString().length==0 || !positiveNumberRegex.test(values.rank.toString()) ){
-    return  new Response("Invalid Rank Input", {
+  if (values.rank.toString().length == 0 || !positiveNumberRegex.test(values.rank.toString())) {
+    return new Response("Invalid Rank Input", {
       status: 400,
     });
   }
-  if(values.category.toString().length==0 || !categorys.includes(values.category.toString())){
-    return  new Response("Invalid Category Input", {
+  if (values.category.toString().length == 0 || !categorys.includes(values.category.toString())) {
+    return new Response("Invalid Category Input", {
       status: 400,
     });
   }
-  if(values.branch.toString().length==0 || !branchs.includes(values.branch.toString())){
-    return  new Response("Invalid Branch Input", {
+  if (values.branch.toString().length == 0 || !branchs.includes(values.branch.toString())) {
+    return new Response("Invalid Branch Input", {
       status: 400,
     });
   }
-  if(values.lastRank.toString().length==0 || !phases.includes(values.lastRank.toString())){
-    return  new Response("Invalid Phase Input", {
+  if (values.lastRank.toString().length == 0 || !phases.includes(values.lastRank.toString())) {
+    return new Response("Invalid Phase Input", {
       status: 400,
     });
   }
-  if(values.type.toString().length>0 && !types.includes(values.type.toString())){
-    return  new Response("Invalid Type Input", {
+  if (values.type.toString().length > 0 && !types.includes(values.type.toString())) {
+    return new Response("Invalid Type Input", {
       status: 400,
     });
   }
-  if(values.coed.toString().length>0 && !coed.includes(values.coed.toString())){
-    return  new Response("Invalid Coed Input", {
+  if (values.coed.toString().length > 0 && !coed.includes(values.coed.toString())) {
+    return new Response("Invalid Coed Input", {
       status: 400,
     });
   }
-  if(values.affiliated.toString().length>0 && !affiliations.includes(values.affiliated.toString())){
-    return  new Response("Invalid Affiliation Input", {
+  if (values.affiliated.toString().length > 0 && !affiliations.includes(values.affiliated.toString())) {
+    return new Response("Invalid Affiliation Input", {
       status: 400,
     });
   }
 
-  let data;
-  try {
-    data = await queryTable(values);
-    //console.log(data.length);
-    //console.log(data);
-    return json(data);
-   
-  } catch (err: any) {
-    console.error(err.message);
-    return null;
-  }
+  let data = await queryTable(values);
+  return json(data.rows);
+
 }
+
 
 export default function Index() {
   const data = useActionData<typeof action>();
@@ -284,7 +257,7 @@ export default function Index() {
                     </select></div>
                   <div>
                     <label htmlFor="category" className="block text-sm font-medium leading-6 ">Category*</label>
-                    <select  name="category" className="p-4 w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" required>
+                    <select name="category" className="p-4 w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" required>
                       <option value="">Choose Category</option>
                       <option value="OC_BOYS">OC Male</option>
                       <option value="OC_GIRLS">OC Female</option>
@@ -333,6 +306,9 @@ export default function Index() {
             </div>
           </div>
         </Form>
+
+
+
         {data ? <div className="p-10">
           <div
             className="ag-theme-quartz" // applying the grid theme
@@ -345,7 +321,6 @@ export default function Index() {
           </div>
         </div> : null}
       </div>
-
 
 
       <footer className="fixed bottom-0 left-0 z-20 w-full p-4 bg-white border-t border-gray-200 shadow md:flex md:items-center md:justify-between md:p-6 dark:bg-white-800 dark:border-gray-300">
