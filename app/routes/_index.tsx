@@ -135,7 +135,7 @@ export default function Index() {
     fetcher.submit(e.target, { method: "post" });
     setTimeout(() => {
       setIsLoading(false);
-    }, 500);
+    }, 1000);
   };
   return (
     <>
