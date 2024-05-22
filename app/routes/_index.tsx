@@ -1,10 +1,10 @@
 import type { ActionFunction, MetaFunction } from "@remix-run/node";
-import { Form, json, useActionData } from "@remix-run/react";
+import { Form, json, useActionData, useFetcher } from "@remix-run/react";
 import db from '../lib/db.server';
-import { AgGridReact } from 'ag-grid-react'; // React Data Grid Component
-import "ag-grid-community/styles/ag-grid.css"; // Mandatory CSS required by the grid
-import "ag-grid-community/styles/ag-theme-quartz.css"; // Optional Theme applied to the grid
-
+import { AgGridReact } from 'ag-grid-react';
+import "ag-grid-community/styles/ag-grid.css"; 
+import "ag-grid-community/styles/ag-theme-quartz.css"; 
+import { useState } from "react";
 
 type Data = {
   INST_CODE: string,
@@ -40,8 +40,15 @@ async function queryTable(values: any): Promise<void> {
   let branch = values.branch.toString();
   let rank = Number(values.rank.toString());
   let category = values.category.toString();
-  let table = values.lastRank.toString() === "final_phase" ? `public."TS_EAMCET_2022_FINAL_PHASE"` : `public."TS_EAMCET_2022_FIRST_PHASE"`
-
+  let table; 
+  switch (values.lastRank.toString()) {
+    case "final_phase_2023":
+      table = `public."TS_EAMCET_2023_FINAL_PHASE"`; break;
+    case "final_phase_2022":
+      table = `public."TS_EAMCET_2022_FINAL_PHASE"`; break;
+    case "first_phase_2022":
+      table = `public."TS_EAMCET_2022_FIRST_PHASE"`; break;
+  }
   let sql = `select distinct "INST_CODE","INSTITUTE_NAME","PLACE","BRANCH_NAME","TUITION_FEE","AFFILIATED","${category}" AS LAST_RANK from ${table} where "BRANCH" = '${branch}' and "${category}">=${rank}`;
   if (values.category.toString().includes("BOYS")) {
     sql += ` and "${category}"!=0 `;
@@ -66,7 +73,7 @@ export const action: ActionFunction = async ({ request }) => {
   const branchs: string[] = ["ANE", "AGR", "AI", "AID", "AIM", "AUT", "PHM", "BME", "BIO", "MMS", "MTE", "CHE", "CIV", "CME", "CSW", "CSG", "CSN", "CSB", "CSE", "CSM", "CSC", "CSD",
     "CSO", "CSI", "CST", "CIC", "DRG", "DTD", "EEE", "ECE", "ECM", "EIE", "ETM", "ECI", "FDT", "INF", "MCT", "MEC", "MET", "MMT", "MIN", "PHD", "PHE", "PLG", "TEX"
   ]
-  const phases: string[] = ["first_phase", "final_phase"];
+  const phases: string[] = ["first_phase_2022", "final_phase_2022", "final_phase_2023"];
   const types: string[] = ["UNIV", "PVT", "SF", "GOV"];
   const coed: string[] = ["GIRLS", "COED"];
   const affiliations: string[] = ["PJTSAU", "ANURAG UNIVERSITY", "KU", "PLMU", "SVHU", "SR UNIVERSITY", "JNTUH", "MGUN", "PVNRTVU", "CONSTITUENT COLLEGE", "OU"];
@@ -117,6 +124,19 @@ export const action: ActionFunction = async ({ request }) => {
 
 export default function Index() {
   const data = useActionData<typeof action>();
+  const fetcher = useFetcher();
+
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: any) => {
+    setIsSubmitted(true)
+    setIsLoading(true);
+    fetcher.submit(e.target, { method: "post" });
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+  };
   return (
     <>
       <header className="bg-white border-b-2 border-solid border-grey-500">
@@ -143,7 +163,7 @@ export default function Index() {
         </div>
       </header> <br />
       <div className="p-10">
-        <Form method="post">
+        <Form method="post" onSubmit={handleSubmit}>
           <div className="container mx-auto">
             <div className="flex flex-col sm:flex-row"> {/* Use flex-col for mobile and flex-row for larger screens */}
               {/* Standalone element */}
@@ -177,8 +197,9 @@ export default function Index() {
                     <label htmlFor="lastRank" className="block text-sm font-medium leading-6 ">Phase*</label>
                     <select name="lastRank" id="lastRank" className="p-4 w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" required>
                       <option value="">Choose Phase</option>
-                      <option value="first_phase">First Phase (2022)</option>
-                      <option value="final_phase">Final Phase (2022)</option>
+                      <option value="final_phase_2023">Final Phase (2023)</option>
+                      <option value="first_phase_2022">First Phase (2022)</option>
+                      <option value="final_phase_2022">Final Phase (2022)</option>
                     </select>
                   </div>
 
@@ -307,9 +328,17 @@ export default function Index() {
           </div>
         </Form>
 
+        {isLoading && <div className="text-center">
+          <div role="status">
+            <svg aria-hidden="true" className="inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor" />
+              <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill" />
+            </svg>
+            <span className="sr-only">Loading...</span>
+          </div>
+        </div>}
 
-
-        {data ? <div className="p-10">
+        {(!isLoading && isSubmitted) ? <div className="p-10">
           <div
             className="ag-theme-quartz" // applying the grid theme
             style={{ height: 600 }} // the grid will fill the size of the parent container
@@ -319,9 +348,9 @@ export default function Index() {
               gridOptions={gridOptions}
             />
           </div>
-        </div> : null}
-      </div>
+        </div> : null }
 
+      </div>
 
       <footer className="fixed bottom-0 left-0 z-20 w-full p-4 bg-white border-t border-gray-200 shadow md:flex md:items-center md:justify-between md:p-6 dark:bg-white-800 dark:border-gray-300">
         <span className="text-sm text-white-500 sm:text-center dark:text-white-400">© 2024 <a href="#" className="hover:underline">TS EAMCET College Predictor™</a>
